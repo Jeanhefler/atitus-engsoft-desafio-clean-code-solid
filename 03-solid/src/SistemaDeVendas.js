@@ -1,16 +1,50 @@
-class SistemaDeVendas {
-  async processarVenda(pedido) {
-    if (!pedido.itens || pedido.itens.length === 0) throw new Error("Pedido sem itens");
-    
-    let total = 0;
-    for (const item of pedido.itens) total += item.preco * item.quantidade;
-    if (total > 1000) total *= 0.9;
+class Pedido {
+  constructor(dados) {
+    this.id = dados.id;
+    this.itens = dados.itens || [];
+    this.clienteEmail = dados.clienteEmail;
+  }
 
-    console.log(`Salvando pedido ${pedido.id}...`);
-    console.log(`Enviando e-mail para ${pedido.clienteEmail}...`);
-    
-    return { ...pedido, total, status: "pago" };
+  validar() {
+    if (this.itens.length === 0) throw new Error("Pedido sem itens");
+  }
+
+  calcularTotal() {
+    let total = this.itens.reduce((acc, i) => acc + (i.preco * i.quantidade), 0);
+    return total > 1000 ? total * 0.9 : total;
   }
 }
 
-module.exports = SistemaDeVendas;
+class NotificadorEmail {
+  enviar(email, mensagem) {
+    console.log(`[SMTP] Enviando para ${email}: ${mensagem}`);
+  }
+}
+
+
+class VendasRepository {
+  salvar(pedido) {
+    console.log(`[DB] Pedido ${pedido.id} salvo com sucesso.`);
+  }
+}
+
+class ProcessarVenda {
+  constructor(repository, notificador) {
+    this.repository = repository;
+    this.notificador = notificador;
+  }
+
+  async processar(dadosPedido) {
+    const pedido = new Pedido(dadosPedido);
+    pedido.validar();
+    
+    const total = pedido.calcularTotal();
+    this.repository.salvar(pedido);
+    this.notificador.enviar(pedido.clienteEmail, `Total: R$ ${total}`);
+    
+    return { ...dadosPedido, total, status: "pago" };
+  }
+}
+
+module.exports = ProcessarVenda;
+
